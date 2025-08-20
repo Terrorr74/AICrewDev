@@ -21,7 +21,7 @@ class LLMConfig(BaseModel):
     model_name: str
     api_base: Optional[str] = None
     api_key: Optional[str] = None
-    temperature: float = 0.7
+    temperature: float = 0.5
     max_tokens: Optional[int] = None
 
     @classmethod
@@ -33,7 +33,7 @@ class LLMConfig(BaseModel):
         model_name = get_env_var("LLM_MODEL_NAME", "llama2")
         api_base = get_env_var("LLM_API_BASE", None)
         api_key = get_env_var("LLM_API_KEY", None)
-        temperature = float(get_env_var("LLM_TEMPERATURE", "0.7"))
+        temperature = float(get_env_var("LLM_TEMPERATURE", "0.5"))
         max_tokens = get_env_var("LLM_MAX_TOKENS", None)
         
         if max_tokens:

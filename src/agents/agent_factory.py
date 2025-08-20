@@ -17,7 +17,7 @@ Example:
 from typing import Optional
 from crewai import Agent
 from langchain_openai import ChatOpenAI
-from langchain.chat_models import ChatOllama
+from langchain_ollama import ChatOllama
 
 from src.config import LLMConfig, LLMProvider
 
