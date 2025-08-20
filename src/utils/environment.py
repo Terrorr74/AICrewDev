@@ -64,6 +64,13 @@ def validate_environment():
     
     if provider == "openai" and not env.get("LLM_API_KEY"):
         raise EnvironmentError("OpenAI provider requires LLM_API_KEY")
+    elif provider == "anthropic" and not env.get("LLM_API_KEY"):
+        raise EnvironmentError("Anthropic provider requires LLM_API_KEY")
+    elif provider == "ollama":
+        # Ollama runs locally, no API key required
+        # Just validate that we have a model name
+        if not env.get("LLM_MODEL_NAME"):
+            raise EnvironmentError("Ollama provider requires LLM_MODEL_NAME")
     elif provider == "other" and not (env.get("LLM_API_BASE") and env.get("LLM_API_KEY")):
         raise EnvironmentError("Other providers require both LLM_API_BASE and LLM_API_KEY")
     
