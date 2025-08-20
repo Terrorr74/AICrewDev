@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aicrewdev"
+version = "0.1.0"
+description = "AI-powered development team simulator"
+authors = [{name = "Your Name"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "crewai>=0.1.0",
+    "langchain-openai>=0.0.2",
+    "python-dotenv>=1.0.0",
+]
