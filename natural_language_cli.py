@@ -485,12 +485,11 @@ class AICrewDevCLI:
             # Run the AI development workflow
             print("🤖 AI development team is working...")
             
-            # Use the regular AI crew workflow with custom prompt
-            # For now, we'll use a simplified approach since the async workflow parameters need adjustment
-            
+            # Start with simple mode (no delegation) to avoid tool errors
             result = self.ai_crew.run(
                 project_type=requirements.app_type.value,
-                use_crew_manager=True
+                use_crew_manager=True,
+                enable_delegation=False  # Disable delegation to avoid tool errors
             )
             
             if result:

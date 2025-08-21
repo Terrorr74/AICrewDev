@@ -127,13 +127,14 @@ class AICrewDev:
         """
         return self.task_service.create_development_workflow(agents, project_type)
     
-    def run(self, project_type: str = "web", use_crew_manager: bool = True) -> Any:
+    def run(self, project_type: str = "web", use_crew_manager: bool = True, enable_delegation: bool = True) -> Any:
         """
         Execute the AI development workflow using enhanced architecture.
         
         Args:
             project_type: Type of project to develop
             use_crew_manager: Whether to use the crew manager for orchestration
+            enable_delegation: Whether to enable agent delegation features
             
         Returns:
             Any: Result of the crew execution
@@ -149,13 +150,14 @@ class AICrewDev:
                 f"Starting crew execution",
                 operation="crew_execution",
                 project_type=project_type,
-                use_crew_manager=use_crew_manager
+                use_crew_manager=use_crew_manager,
+                delegation_enabled=enable_delegation
             )
             
             try:
                 if use_crew_manager:
-                    # Use the enhanced crew manager for better orchestration
-                    crew = self.crew_manager.create_development_crew(project_type)
+                    # Use the enhanced crew manager with delegation option
+                    crew = self.crew_manager.create_development_crew(project_type, enable_delegation)
                     result = self.crew_manager.execute_crew(crew)
                 else:
                     # Use the traditional approach with enhanced services

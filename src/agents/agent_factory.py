@@ -87,8 +87,9 @@ class AgentFactory:
             solutions on time.""",
             "llm": llm,
             "verbose": optimized_config.verbose,
-            "allow_delegation": True,
+            "allow_delegation": True,  # Enable collaboration tools
             "max_iter": 25,  # More iterations for complex strategic thinking
+            "max_execution_time": None,  # No timeout for complex decisions
         }
         
         if tools:
@@ -143,8 +144,10 @@ class AgentFactory:
             stay up-to-date with the latest technologies and frameworks in {specialization} development.""",
             "llm": llm,
             "verbose": optimized_config.verbose,
+            "allow_delegation": False,  # Developers should focus on their expertise
             "allow_code_execution": True,
             "max_iter": 20,
+            "max_execution_time": None,
         }
         
         if tools:
@@ -185,7 +188,9 @@ class AgentFactory:
             code quality while mentoring other developers to write better code.""",
             "llm": llm,
             "verbose": optimized_config.verbose,
+            "allow_delegation": False,  # Reviewers should focus on their analysis
             "max_iter": 15,  # Focused iterations for detailed analysis
+            "max_execution_time": None,
         }
         
         if tools:
@@ -226,8 +231,9 @@ class AgentFactory:
             risk management, and keeping teams focused on deliverables.""",
             "llm": llm,
             "verbose": optimized_config.verbose,
-            "allow_delegation": True,
+            "allow_delegation": True,  # Enable collaboration tools for coordination
             "max_iter": 20,
+            "max_execution_time": None,
         }
         
         if tools:

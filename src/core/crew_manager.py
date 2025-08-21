@@ -33,18 +33,25 @@ class CrewManager:
         self._current_crew: Optional[Crew] = None
         self._execution_history: List[Dict[str, Any]] = []
     
-    def create_development_crew(self, project_type: str = "web") -> Crew:
+    def create_development_crew(self, project_type: str = "web", enable_delegation: bool = True) -> Crew:
         """
         Create a development-focused crew with specialized agents.
         
         Args:
             project_type: Type of project (web, mobile, api, etc.)
+            enable_delegation: Whether to enable delegation features (default: True)
             
         Returns:
             Crew: Configured development crew
         """
         # Create role-specific agents
-        tech_lead = AgentFactory.create_tech_lead(self.config)
+        if enable_delegation:
+            tech_lead = AgentFactory.create_tech_lead(self.config)
+            project_manager = AgentFactory.create_project_manager(self.config)
+        else:
+            # Create agents without delegation for testing
+            tech_lead = self._create_simple_tech_lead()
+            project_manager = self._create_simple_project_manager()
         
         # Customize developer based on project type
         specialization_map = {
@@ -58,12 +65,14 @@ class CrewManager:
         developer = AgentFactory.create_developer(self.config, specialization=specialization)
         
         code_reviewer = AgentFactory.create_code_reviewer(self.config)
-        project_manager = AgentFactory.create_project_manager(self.config)
         
         agents = [tech_lead, developer, code_reviewer, project_manager]
         
         # Create development tasks
-        tasks = self._create_development_tasks(agents, project_type)
+        if enable_delegation:
+            tasks = self._create_development_tasks(agents, project_type)
+        else:
+            tasks = self._create_simple_development_tasks(agents, project_type)
         
         # Apply settings to crew configuration
         crew_config = self.settings.get_crew_config()
@@ -128,9 +137,15 @@ class CrewManager:
         print(f"👥 Agents: {len(target_crew.agents)}")
         print(f"📝 Tasks: {len(target_crew.tasks)}")
         
+        # Display agent collaboration settings
+        for i, agent in enumerate(target_crew.agents):
+            delegation_status = "✅ Can delegate" if getattr(agent, 'allow_delegation', False) else "❌ No delegation"
+            print(f"   Agent {i+1}: {agent.role} ({delegation_status})")
+        
         try:
-            # Execute the crew
+            # Execute the crew with proper error handling
             if input_data:
+                print(f"📊 Input data provided: {list(input_data.keys())}")
                 result = target_crew.kickoff(inputs=input_data)
             else:
                 result = target_crew.kickoff()
@@ -164,38 +179,91 @@ class CrewManager:
             self._execution_history.append(execution_record)
             
             print(f"❌ Crew execution failed: {e}")
+            
+            # Provide specific guidance for common errors
+            if "unhashable type" in str(e):
+                print("💡 This error is often related to tool parameter formatting.")
+                print("🔧 The crew will continue with available functionality.")
+            elif "delegation" in str(e).lower():
+                print("💡 This may be a delegation tool issue.")
+                print("🔧 Try running without delegation features.")
+            
             raise
     
     def _create_development_tasks(self, agents: List[Agent], project_type: str) -> List[Task]:
         """
-        Create development-specific tasks for the crew.
+        Create development-specific tasks for the crew that encourage collaboration.
         
         Args:
             agents: List of available agents
             project_type: Type of project being developed
             
         Returns:
-            List[Task]: Development tasks
+            List[Task]: Development tasks designed for collaboration
         """
         tech_lead, developer, reviewer, manager = agents
         
-        # Create project-specific tasks
-        planning_task = TaskFactory.create_design_task(tech_lead)
-        
-        development_task = TaskFactory.create_development_task(
-            developer,
-            f"Implement {project_type} application following the design specifications"
+        # Task 1: Strategic Planning - Led by Tech Lead with delegation capability
+        planning_task = Task(
+            description=f"""Create a comprehensive technical plan for building a {project_type} application.
+            
+            As the technical lead, you should:
+            1. Define the system architecture and technology stack
+            2. Break down the project into manageable components
+            3. Identify potential risks and mitigation strategies
+            4. Collaborate with the project manager on timeline and resource planning
+            
+            Feel free to ask questions to your teammates or delegate specific research tasks.""",
+            agent=tech_lead,
+            expected_output="A detailed technical architecture document with implementation roadmap",
         )
         
-        review_task = TaskFactory.create_review_task(
-            reviewer,
-            "Review implementation for code quality, security, and best practices"
+        # Task 2: Implementation - Developer with context from planning
+        development_task = Task(
+            description=f"""Implement the {project_type} application based on the technical specifications.
+            
+            Focus on:
+            1. Writing clean, maintainable code following best practices
+            2. Implementing core features and functionality
+            3. Adding proper error handling and logging
+            4. Creating basic tests for key functionality
+            
+            If you need clarification on any requirements, ask the tech lead or project manager.""",
+            agent=developer,
+            expected_output="Complete application code with core features implemented",
+            context=[planning_task],  # Gets context from planning task
         )
         
+        # Task 3: Quality Review - Reviewer with context from development
+        review_task = Task(
+            description="""Review the implemented code for quality, security, and best practices.
+            
+            Provide feedback on:
+            1. Code quality and maintainability
+            2. Security vulnerabilities and fixes
+            3. Performance optimization opportunities
+            4. Testing coverage and suggestions
+            
+            If you find issues that need developer input, ask specific questions.""",
+            agent=reviewer,
+            expected_output="Code review report with specific feedback and improvement recommendations",
+            context=[development_task],  # Gets context from development task
+        )
+        
+        # Task 4: Project Coordination - Manager with full context
         coordination_task = Task(
-            description="Coordinate project delivery and ensure all requirements are met",
+            description="""Coordinate the final project delivery and ensure all requirements are met.
+            
+            Your responsibilities:
+            1. Review all deliverables for completeness
+            2. Ensure the project meets the original requirements
+            3. Coordinate any remaining work between team members
+            4. Prepare the final project summary and next steps
+            
+            Delegate any final tasks that need to be completed and ask questions to clarify any gaps.""",
             agent=manager,
-            expected_output="Project delivery summary with quality assessment"
+            expected_output="Project delivery summary with quality assessment and completion status",
+            context=[planning_task, development_task, review_task],  # Gets context from all previous tasks
         )
         
         return [planning_task, development_task, review_task, coordination_task]
@@ -256,6 +324,81 @@ class CrewManager:
         """Get current timestamp for execution tracking."""
         import datetime
         return datetime.datetime.now().isoformat()
+    
+    def _create_simple_tech_lead(self) -> Agent:
+        """Create a tech lead without delegation for testing."""
+        llm = self.config.create_crewai_llm()
+        if llm is None:
+            llm = self.config.to_crewai_format()
+            
+        return Agent(
+            role="Technical Lead",
+            goal="Provide technical leadership and create system architecture",
+            backstory="You are an experienced technical leader with expertise in software architecture.",
+            llm=llm,
+            verbose=self.config.verbose,
+            allow_delegation=False,  # Disable delegation for testing
+            max_iter=15,
+        )
+    
+    def _create_simple_project_manager(self) -> Agent:
+        """Create a project manager without delegation for testing."""
+        llm = self.config.create_crewai_llm()
+        if llm is None:
+            llm = self.config.to_crewai_format()
+            
+        return Agent(
+            role="Project Manager",
+            goal="Coordinate project delivery and ensure quality",
+            backstory="You are an experienced project manager focused on successful delivery.",
+            llm=llm,
+            verbose=self.config.verbose,
+            allow_delegation=False,  # Disable delegation for testing
+            max_iter=15,
+        )
+    
+    def _create_simple_development_tasks(self, agents: List[Agent], project_type: str) -> List[Task]:
+        """
+        Create simple development tasks without complex collaboration.
+        
+        Args:
+            agents: List of available agents
+            project_type: Type of project being developed
+            
+        Returns:
+            List[Task]: Simple development tasks
+        """
+        tech_lead, developer, reviewer, manager = agents
+        
+        # Simple tasks without delegation requirements
+        planning_task = Task(
+            description=f"Create a technical plan for a {project_type} application including architecture and technology choices.",
+            agent=tech_lead,
+            expected_output="Technical architecture document with implementation plan",
+        )
+        
+        development_task = Task(
+            description=f"Implement a {project_type} application with core functionality, following best practices.",
+            agent=developer,
+            expected_output="Complete application code with main features implemented",
+            context=[planning_task],
+        )
+        
+        review_task = Task(
+            description="Review the implemented code for quality, security, and best practices.",
+            agent=reviewer,
+            expected_output="Code review report with feedback and recommendations",
+            context=[development_task],
+        )
+        
+        coordination_task = Task(
+            description="Review all deliverables and prepare project summary.",
+            agent=manager,
+            expected_output="Project completion summary with quality assessment",
+            context=[planning_task, development_task, review_task],
+        )
+        
+        return [planning_task, development_task, review_task, coordination_task]
     
     def reset(self):
         """Reset the crew manager state."""
