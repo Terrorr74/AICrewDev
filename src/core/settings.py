@@ -84,10 +84,17 @@ class Settings(BaseModel):
         Returns:
             dict: Configuration parameters for Crew
         """
+        # Check if memory should be enabled based on available environment variables
+        memory_enabled = self.enable_memory
+        
+        # Disable memory if CHROMA_OPENAI_API_KEY is not available
+        if memory_enabled and not os.getenv("CHROMA_OPENAI_API_KEY"):
+            memory_enabled = False
+        
         return {
             "verbose": self.crew_verbose,
             "max_iterations": self.max_iterations,
-            "memory": self.enable_memory,
+            "memory": memory_enabled,
         }
     
     def get_agent_defaults(self) -> dict:
